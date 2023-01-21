@@ -1,66 +1,74 @@
 #include "main.h"
 
-void print_buffer(char buffer[], int *buff_ind);
-
 /**
- * _printf - Printf function
- * @format: format.
- * Return: Printed chars.
+ * _printf - custom function that format and print data
+ * @format:  list of types of arguments passed to the function
+ * Return: int
  */
+
 int _printf(const char *format, ...)
 {
-	int i, printed = 0, printed_chars = 0;
-	int flags, width, precision, size, buff_ind = 0;
 	va_list list;
-	char buffer[BUFF_SIZE];
+	int idx, j;
+	int len_buf = 0;
+	char *s;
+	char *create_buff;
 
-	if (format == NULL)
-		return (-1);
+	type_t ops[] = {
+		{"c", print_c},
+		{"s", print_s},
+		{"i", print_i},
+		{"d", print_i},
+		{"b", print_bin},
+		{NULL, NULL}
+	};
 
-	va_start(list, format);
-
-	for (i = 0; format && format[i] != '\0'; i++)
+	create_buff = malloc(1024 * sizeof(char));
+	if (create_buff == NULL)
 	{
-		if (format[i] != '%')
+		free(create_buff);
+		return (-1);
+	}
+	va_start(list, format);
+	if (format == NULL || list == NULL)
+		return (-1);
+	for (idx = 0; format[idx] != '\0'; idx++)
+	{
+		if (format[idx] == '%' && format[idx + 1] == '%')
+			continue;
+		else if (format[idx] == '%')
 		{
-			buffer[buff_ind++] = format[i];
-			if (buff_ind == BUFF_SIZE)
-				print_buffer(buffer, &buff_ind);
-			/* write(1, &format[i], 1);*/
-			printed_chars++;
+			if (format[idx + 1] == ' ')
+				idx += _position(format, idx);
+			for (j = 0; ops[j].f != NULL; j++)
+			{
+				if (format[idx + 1] == *(ops[j].op))
+				{
+					s = ops[j].f(list);
+					if (s == NULL)
+						return (-1);
+					_strlen(s);
+					_strcat(create_buff, s, len_buf);
+					len_buf += _strlen(s);
+					idx++;
+					break;
+				}
+			}
+			if (ops[j].f == NULL)
+			{
+				create_buff[len_buf] = format[idx];
+				len_buf++;
+			}
 		}
 		else
 		{
-			print_buffer(buffer, &buff_ind);
-			flags = get_flags(format, &i);
-			width = get_width(format, &i, list);
-			precision = get_precision(format, &i, list);
-			size = get_size(format, &i);
-			++i;
-			printed = handle_print(format, &i, list, buffer,
-				flags, width, precision, size);
-			if (printed == -1)
-				return (-1);
-			printed_chars += printed;
+			create_buff[len_buf] = format[idx];
+			len_buf++;
 		}
 	}
-
-	print_buffer(buffer, &buff_ind);
-
+	create_buff[len_buf] = '\0';
+	write(1, create_buff, len_buf);
 	va_end(list);
-
-	return (printed_chars);
-}
-
-/**
- * print_buffer - Prints the contents of the buffer if it exist
- * @buffer: Array of chars
- * @buff_ind: Index at which to add next char, represents the length.
- */
-void print_buffer(char buffer[], int *buff_ind)
-{
-	if (*buff_ind > 0)
-		write(1, &buffer[0], *buff_ind);
-
-	*buff_ind = 0;
+	free(create_buff);
+	return (len_buf);
 }
